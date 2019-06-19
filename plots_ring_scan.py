@@ -17,19 +17,21 @@ def ring_scan_plots(ring_scan_data_int, ilm_ring_scan_int, rpe_ring_scan_int, ri
                     rpe_ring_scan):
 
     noe = np.size(ring_scan_data_int, 1)
+
     fig, (ax1, ax2) = plt.subplots(ncols=2)
     ax1.plot(np.arange(0, noe), ilm_ring_scan_int, color='green', linewidth=5.0)
     ax1.plot(np.arange(0, noe), rpe_ring_scan_int, color='blue', linewidth=5.0)
     ax1.imshow(ring_scan_data_int, cmap='gray', vmin=0, vmax=255)
-    ax1.title.set_text('Extracted ring scan and corresponding ilm and rpe segmentation')
-    ax1.set_xlabel('A scan #')
-    ax1.set_ylabel('interpolated grey value and segmentation')
+    ax1.title.set_text('Interpolated ring scan')
+    ax1.set_xlabel('Number of A scans')
+    ax1.set_ylabel('Z axis')
+
     ax2.plot(np.arange(0, noe), ilm_ring_scan, color='green', linewidth=5.0)
     ax2.plot(np.arange(0, noe), rpe_ring_scan, color='blue', linewidth=5.0)
     ax2.imshow(ring_scan_data, cmap='gray', vmin=0, vmax=255)
-    ax2.title.set_text('Spectralis ring scan and corresponding ilm and rpe segmentation')
-    ax2.set_xlabel('A scan #')
-    ax2.set_ylabel('grey value and segmentation')
+    ax2.title.set_text('Spectralis ring scan')
+    ax2.set_xlabel('Number of A scans')
+    ax2.set_ylabel('Z axis')
     plt.show()
 
     return
