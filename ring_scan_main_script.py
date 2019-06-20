@@ -9,13 +9,14 @@ from plots_ring_scan import ring_scan_plots, thickness_plot, bland_altman_plot
 
 # parameters for ring scan interpolation & plotting_boolean
 radius = 1.75
-filter_parameter = int(1)
+filter_parameter = int(2)
 plotting_boolean = False
+save_boolean = True
 
 
 def full_id(file_name):
     """
-    This function returns a row vector ['EYE_ID' 'ScanPos' 'year' 'month' 'day' ] for an inputted file
+    This function returns a row vector ['EYE_ID' 'ScanPos' 'year' 'month' 'day' ] for an input file
 
     :param file_name: file name of scan for which ID is wanted
     :return: see description
@@ -241,9 +242,11 @@ if num_files != 0:
     print(number_statistics, "ring scans have been compared!")
 
     # plot bland-altman
-    bland_altman_plot(mean_layer_thickness_ring_scan, mean_layer_thickness_ring_scan_int)
+    bland_altman_plot(mean_layer_thickness_ring_scan, mean_layer_thickness_ring_scan_int,
+                      'mean layer thickness comparisons', save_boolean, plotting_boolean)
 
     # plot bland-altman
-    plot_rnd = np.random.randint(0, np.size(layer_thickness_per_a_scan, 1), size=(1, 2000))
+    plot_rnd = np.random.randint(0, np.size(layer_thickness_per_a_scan, 1), size=(1, 700))
     plot_ind = np.unique(plot_rnd, axis=0).astype('int')
-    bland_altman_plot(layer_thickness_per_a_scan[0, plot_ind], layer_thickness_per_a_scan_int[0, plot_ind])
+    bland_altman_plot(layer_thickness_per_a_scan[0, plot_ind], layer_thickness_per_a_scan_int[0, plot_ind],
+                      'random A scan comparisons', save_boolean, plotting_boolean)

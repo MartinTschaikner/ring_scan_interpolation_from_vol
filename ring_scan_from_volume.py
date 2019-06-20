@@ -199,7 +199,7 @@ def smooth_segmentation(segmentation_data, smoothing_factor):
     spl.set_smoothing_factor(smoothing_factor)
     y_spline = spl(x_spline)
 
-    # plot spline fit
+    # plot spline fit and compare to original segmentation
     plot = False
     if plot:
         plt.figure()
