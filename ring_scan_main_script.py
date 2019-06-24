@@ -6,12 +6,14 @@ from datetime import date
 import ring_scan_from_volume
 import OCT_read
 from plots_ring_scan import ring_scan_plots, thickness_plot, bland_altman_plot
+import cv2
 
 # parameters for ring scan interpolation & plotting_boolean
 radius = 1.75
 filter_parameter = int(2)
 plotting_boolean = False
-save_boolean = True
+save_boolean = False
+save_tiff_boolean = True
 
 
 def full_id(file_name):
@@ -212,6 +214,14 @@ for i in range(num_files):
 
         # checks if comparison is added to statistics
         if remove_boolean is False:
+
+            # save interpolated ring scan to tiff file
+            if save_tiff_boolean:
+                tiff_path = 'interpolated_ring_scans/filter_par_' + str(filter_parameter) + '/'
+                file_tiff_pre = file_vol.split('.')[0]
+                file_tiff_suf = '_' + full_id_vol_scan[index_assign[i], 1][0] + '_0_int.tiff'
+                cv2.imwrite(tiff_path + file_tiff_pre + file_tiff_suf, ring_scan_int)
+                print('Interpolated ring scan saved as ' + file_tiff_pre + file_tiff_suf)
 
             number_statistics = number_statistics + 1
 

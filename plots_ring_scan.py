@@ -83,11 +83,14 @@ def bland_altman_plot(measurement_1, measurement_2, title, save, plot):
     plt.rc('text', usetex=True)
     plt.rc('font', family='serif')
 
-    # check for nan in data
+    # check for nan in data and delete those entries from data array
     nan_check = measurement_1 * measurement_2
     measurement_1 = measurement_1[np.isnan(nan_check).astype('int') == 0].reshape((1, -1))
-    measurement_2 = measurement_2[np.isnan(nan_check).astype('int') == 0]\
-        .reshape((1, -1))
+    measurement_2 = measurement_2[np.isnan(nan_check).astype('int') == 0].reshape((1, -1))
+
+    if title == 'mean layer thickness comparisons':
+        np.save('mean_layer_thickness_ring_scan', measurement_1)
+        np.save('mean_layer_thickness_ring_scan_int', measurement_2)
 
     num = np.size(measurement_1, 1)
 

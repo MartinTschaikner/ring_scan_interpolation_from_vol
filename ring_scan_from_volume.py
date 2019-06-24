@@ -73,6 +73,22 @@ class RingScanFromVolume:
         ilm_ring_scan = np.zeros(noe)
         rpe_ring_scan = np.zeros(noe)
 
+        # check number of segmentation layers within volume file
+        for i in range(np.size(self.seg_data_full['SegLayers'], 1)):
+            layer = self.seg_data_full['SegLayers'][:, i, :]
+
+            # if complete layer is nan, exit loop and return number of layers
+            if np.nansum(layer) == 0:
+                # num_layers = i
+                # print('Number of segmentation layers:', num_layers)
+                break
+
+            # if no complete nan layer detected, return all layers are filled with data
+            if i == np.size(self.seg_data_full['SegLayers'], 1) - 1:
+                # num_layers = i + 1
+                # print('Number of segmentation layers:', num_layers)
+                break
+
         # filter size
         f_x = int(2 * self.filter_parameter + 1)
         f_y = int(6 * self.filter_parameter + 1)
@@ -114,7 +130,7 @@ class RingScanFromVolume:
             # fill ring scan data array
             ring_scan_data[:, i] = gv_w
 
-            # repeat for ilm data array
+            # repeat for ilm data array -- SegLayers # 0
             z_ilm = self.seg_data_full['SegLayers'][index_y_min:index_y_max + 1, 0, index_x_min:index_x_max + 1]
 
             # handle nan in ilm data with nan sum
@@ -126,7 +142,7 @@ class RingScanFromVolume:
 
             ilm_ring_scan[i] = np.nansum(w * z_ilm) / np.sum(w)
 
-            # repeat for rpe data array
+            # repeat for rpe data array -- SegLayers # 1
             z_rpe = self.seg_data_full['SegLayers'][index_y_min:index_y_max + 1, 1, index_x_min:index_x_max + 1]
 
             # handle nan in rpe data with nan sum
