@@ -67,6 +67,7 @@ if compute:
     scan_pos = str(header_vol['ScanPosition'])
     scan_pos_input = scan_pos[2:4]
 
+    # check for correct scan position OS/OD of ring scans
     for i in range(len(ring_scan_file)):
         # Get the all information about the input ring scan file
         oct_info_ring_scan = OCT_read.OctRead(ring_scan_path + ring_scan_file[i])
@@ -128,4 +129,4 @@ if compute:
             thickness_plot(diff_ilm_rpe_int, diff_mean_int, diff_ilm_rpe, diff_mean)
 
         else:
-            print('"No matching ring scan file for selected volume scan!"')
+            print('No matching ring scan file for selected volume scan!')
