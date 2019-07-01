@@ -120,7 +120,7 @@ def bland_altman_plot(measurement_1, measurement_2, title, save, plot):
     print('slope:', model.coef_)
 
     # create lin reg parameters & data for plot
-    y_plot = model.coef_ * max_mean + model.intercept_
+    plot_text_y = model.coef_ * max_mean + model.intercept_
     lin_reg_str = 'SLOPE: ' + "{:.4f}".format(model.coef_[0, 0]) + '\n' +\
                   'INTERCEPT: ' + "{:.4f}".format(model.intercept_[0])
     if model.coef_[0, 0] > 0:
@@ -141,7 +141,7 @@ def bland_altman_plot(measurement_1, measurement_2, title, save, plot):
              fontsize=15, horizontalalignment='right', verticalalignment='bottom', color='red')
     plt.text(max_mean, mean_diff - 1.96 * std_diff, '-1.96 SD: ' + "{:.4f}".format(mean_diff - 1.96 * std_diff),
              fontsize=15, horizontalalignment='right', verticalalignment='bottom', color='red')
-    plt.text(max_mean, y_plot, lin_reg_str, fontsize=15, horizontalalignment='right', verticalalignment=str_pos,
+    plt.text(max_mean, plot_text_y, lin_reg_str, fontsize=15, horizontalalignment='right', verticalalignment=str_pos,
              color='blue')
 
     if save:

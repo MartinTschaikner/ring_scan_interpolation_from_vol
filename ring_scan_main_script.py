@@ -11,9 +11,9 @@ import cv2
 # parameters for ring scan interpolation & plotting_boolean
 radius = 1.75
 filter_parameter = int(2)
-plotting_boolean = False
+plotting_boolean = True
 save_boolean = False
-save_tiff_boolean = True
+save_tiff_boolean = False
 
 
 def full_id(file_name):
