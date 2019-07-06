@@ -89,15 +89,26 @@ class RingScanFromVolume:
                 # print('Number of segmentation layers:', num_layers)
                 break
 
-        # filter size
-        f_x = int(2 * self.filter_parameter + 1)
-        f_y = int(6 * self.filter_parameter + 1)
+        # filter size computed depending on ratio of x to y resolution of volume data
+        if self.file_header['Distance'] > self.file_header['ScaleX']:
+            multiples = np.around(self.file_header['Distance'] / self.file_header['ScaleX'])
+            f_x = int(2 * self.filter_parameter + 1)
+            f_y = int(2 * multiples * self.filter_parameter + 1)
+            # defines sigma as 1/3 of greater distance
+            sigma = 1 / 3 * max(self.file_header['Distance'], multiples * self.file_header['ScaleX'])
+        else:
+            multiples = np.around(self.file_header['ScaleX'] / self.file_header['Distance'])
+            f_x = int(2 * multiples * self.filter_parameter + 1)
+            f_y = int(2 * self.filter_parameter + 1)
+            # defines sigma as 1/3 of greater distance
+            sigma = 1 / 3 * max(multiples * self.file_header['Distance'], self.file_header['ScaleX'])
 
         # sigma^2
         if int(self.filter_parameter) != 0:
-            sigma2 = np.square(2 / 3 * self.filter_parameter * self.file_header['ScaleX'])
+            sigma2 = np.square(self.filter_parameter * sigma)
         else:
-            sigma2 = np.square(0.1 * self.file_header['ScaleX'])
+            # defines sigma as 1/3 of smaller distance
+            sigma2 = np.square(1 / 3 * min(self.file_header['Distance'], self.file_header['ScaleX']))
 
         # loop over all circle points
         for i in range(noe):

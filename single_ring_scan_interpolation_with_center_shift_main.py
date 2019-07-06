@@ -93,6 +93,10 @@ if compute:
             # RNFL_ring_scan = seg_data_full['SegLayers'][:, 2, :]
             number_circle_points = header_ring_scan['SizeX']
 
+            # get layer thickness for actual ring scan
+            diff_ilm_rpe, diff_mean, diff_std = thickness_ilm_rpe_layer(header_ring_scan, ilm_ring_scan,
+                                                                        rpe_ring_scan)
+
             # Get the b scan stack of the input vol file
             b_scan_stack = oct_info_vol.get_b_scans(header_vol)
 
@@ -108,25 +112,61 @@ if compute:
             # compute correct circle points to corresponding scan pattern (OS vs OD)
             circle_points = ring_scan_interpolated.circle_points_coordinates()
 
+            step_res = min(header_vol['Distance'], header_vol['ScaleX'])
+            m = 9
+            n = 1
+            step_space = np.arange(-n*m, n*m + 1) / n * step_res
+            x, y = np.meshgrid(step_space, step_space)
+
+            center_shift = np.array([x.flatten(), y.flatten()]).T
+
+            # best shift found so far:
+            # center_shift = np.array([[-6.5 * step_res, 11.66 * step_res], [0, 0]])
+
+            epsilon_min = 1
+            true_center_shift = np.array([[0], [0]])
+            k = 0
+
+            for j in center_shift:
+                print(k)
+                k = k + 1
+
+                circle_points_shift = circle_points + j.reshape(-1, 1)
+
+                # compute interpolated grey values, ilm and rpe segmentation
+                ring_scan_int, ilm_ring_scan_int, rpe_ring_scan_int, remove_boolean = \
+                    ring_scan_interpolated.ring_scan_interpolation(circle_points_shift)
+
+                # get layer thickness for extracted ring scan
+                diff_ilm_rpe_int, diff_mean_int, diff_std_int = thickness_ilm_rpe_layer(header_vol,
+                                                                                        ilm_ring_scan_int,
+                                                                                        rpe_ring_scan_int)
+
+                # search for smallest mean error in difference
+                epsilon = np.nansum(np.abs(diff_ilm_rpe - diff_ilm_rpe_int)) / number_circle_points
+
+                if epsilon < epsilon_min:
+                    epsilon_min = epsilon
+                    true_center_shift = j.reshape(-1, 1)
+
+            print(true_center_shift)
+            print(epsilon_min / header_vol['ScaleZ'])
+            circle_points_true_shift = circle_points + true_center_shift.reshape(-1, 1)
+
             # compute interpolated grey values, ilm and rpe segmentation
             ring_scan_int, ilm_ring_scan_int, rpe_ring_scan_int, remove_boolean = \
-                ring_scan_interpolated.ring_scan_interpolation(circle_points)
-
-            # plot ring scan of interpolated grey values and corresponding ilm and rpe segmentation
-            ring_scan_plots(ring_scan_int, ilm_ring_scan_int, rpe_ring_scan_int, ring_scan, ilm_ring_scan,
-                            rpe_ring_scan)
-
-            # get layer thickness for actual ring scan
-            diff_ilm_rpe, diff_mean, diff_std = thickness_ilm_rpe_layer(header_ring_scan, ilm_ring_scan,
-                                                                        rpe_ring_scan)
+                ring_scan_interpolated.ring_scan_interpolation(circle_points_true_shift)
 
             # get layer thickness for extracted ring scan
             diff_ilm_rpe_int, diff_mean_int, diff_std_int = thickness_ilm_rpe_layer(header_vol,
                                                                                     ilm_ring_scan_int,
                                                                                     rpe_ring_scan_int)
-
             # plot thickness difference of actual and extracted ring scan
             thickness_plot(diff_ilm_rpe_int, diff_mean_int, diff_ilm_rpe, diff_mean)
+
+            # plot ring scan of interpolated grey values and corresponding ilm and rpe segmentation
+            ring_scan_plots(ring_scan_int, ilm_ring_scan_int, rpe_ring_scan_int, ring_scan, ilm_ring_scan,
+                            rpe_ring_scan)
 
         else:
             print('No matching ring scan file for selected volume scan!')
