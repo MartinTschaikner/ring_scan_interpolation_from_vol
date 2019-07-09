@@ -121,7 +121,7 @@ if compute:
             center_shift = np.array([x.flatten(), y.flatten()]).T
 
             # best shift found so far:
-            # center_shift = np.array([[-6.5 * step_res, 11.66 * step_res], [0, 0]])
+            center_shift = np.array([[-6.5 * step_res, 11.66 * step_res], [0, 0]])
 
             epsilon_min = 1
             true_center_shift = np.array([[0], [0]])

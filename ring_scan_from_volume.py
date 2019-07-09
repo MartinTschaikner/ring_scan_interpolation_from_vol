@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from scipy.interpolate import UnivariateSpline
+from scipy.spatial.distance import cdist, euclidean
 import matplotlib.pyplot as plt
 
 
@@ -45,6 +46,7 @@ class RingScanFromVolume:
         bmo_points[:, 2] = bmo_data.iloc[2, :] * self.file_header['ScaleZ']
         bmo_center_3d = np.mean(bmo_points, axis=0)
         bmo_center_2d = np.array([bmo_center_3d[0], bmo_center_3d[1]])
+        bmo_center_geom_mean_2d = geometric_median(bmo_points[:, 0:2], eps=1e-6)
 
         # compute noe equidistant circle points around bmo center with given radius
         noe = self.number_circle_points
@@ -59,8 +61,26 @@ class RingScanFromVolume:
         else:
             phi = np.linspace(0, 2 * np.pi, num=noe, endpoint=False) - np.pi
 
-        center = np.linspace(bmo_center_2d, bmo_center_2d, num=noe).T
+        center = np.linspace(bmo_center_geom_mean_2d, bmo_center_geom_mean_2d, num=noe).T
         circle_points_coordinates = center + self.radius * np.array((np.cos(phi), np.sin(phi)))
+
+        plot = True
+        if plot:
+            radius = np.mean(np.sqrt((bmo_points[:, 0] - bmo_center_2d[0])**2 +
+                                     (bmo_points[:, 1] - bmo_center_2d[1])**2))
+            shift = np.sqrt((bmo_center_2d[0] - bmo_center_geom_mean_2d[0])**2 +
+                            (bmo_center_2d[1] - bmo_center_geom_mean_2d[1])**2)
+            print('Difference between center of mass and geometric median of BMO points:', shift)
+            bmo_circle_points = center + radius * np.array((np.cos(phi), np.sin(phi)))
+            fig, ax = plt.subplots(ncols=1)
+            ax.plot(bmo_points[:, 0], bmo_points[:, 1], color='black', marker='o', linestyle='None')
+            ax.plot(bmo_center_3d[0], bmo_center_3d[1], color='red', marker='o')
+            ax.plot(bmo_center_geom_mean_2d[0], bmo_center_geom_mean_2d[1], color='orange', marker='+')
+            ax.plot(bmo_circle_points[0], bmo_circle_points[1], ':', linewidth=1, color='black')
+            ax.plot(circle_points_coordinates[0], circle_points_coordinates[1], ':', linewidth=3, color='green')
+            ax.set_aspect('equal', 'box')
+            ax.axis('off')
+            plt.show()
 
         return circle_points_coordinates
 
@@ -229,15 +249,18 @@ def smooth_segmentation(segmentation_data, smoothing_factor):
     # plot spline fit and compare to original segmentation
     plot = False
     if plot:
+        plt.rcParams.update({'font.size': 18})
         plt.figure()
         plt.plot(x_fit, segmentation_data[x_fit], 'ro', ms=4)
         if critical_indices.size != 0:
             plt.plot(critical_indices, segmentation_data[critical_indices], 'bx', ms=6)
             plt.plot(final_indices, segmentation_data[final_indices], 'b+', ms=6)
-        plt.plot(x_spline, y_spline, 'g', lw=3)
-        plt.plot(np.linspace(0, noe - 1, noe), segmentation_data, 'b', lw=1)
+        plt.plot(np.linspace(0, noe - 1, noe), segmentation_data, 'b', lw=1, label='interpolated segmentation')
+        plt.plot(x_spline, y_spline, 'g', lw=3, label='3rd degree spline')
         plt.ylim([0, 300])
+        plt.legend(loc='best')
         plt.gca().invert_yaxis()
+        plt.axis('off')
         plt.show()
 
     # checks for spikes in spline fit and if there are any, exclude from statistics.
@@ -340,3 +363,39 @@ def segmentation_critical_split(segmentation_data, critical_indices, critical_le
         final_indices = critical_indices
 
     return final_indices
+
+
+def geometric_median(bmo_points, eps=1e-5):
+    """
+    This static method computes the geometric median of the input coordinates
+    (The multivariateL1-median and associated data depth Yehuda Vardi† and Cun-Hui Zhang‡ Department of Statistics,
+    Rutgers University, New Brunswick, NJ 08854Communicated by Lawrence A. Shepp, Rutgers,
+    The State University of New Jersey, Piscataway, NJ, November 17, 1999 (received for reviewOctober 15, 1999)
+
+    :param bmo_points:
+    :param eps:
+    :return: geometric median of input points
+    """
+
+    y = np.mean(bmo_points, 0)
+
+    while True:
+        d = cdist(bmo_points, [y])
+        non_zeros = (d != 0)[:, 0]
+        d_inv = 1 / d[non_zeros]
+        d_inv_sum = np.sum(d_inv)
+        w = d_inv / d_inv_sum
+        t = np.sum(w * bmo_points[non_zeros], 0)
+        num_zeros = len(bmo_points) - np.sum(non_zeros)
+        if num_zeros == 0:
+            y1 = t
+        elif num_zeros == len(bmo_points):
+            return y
+        else:
+            r = (t - y) * d_inv_sum
+            r_norm = np.linalg.norm(r)
+            r_inv = 0 if r == 0 else num_zeros / r_norm
+            y1 = max(0, 1 - r_inv) * t + min(1, r_inv) * y
+        if euclidean(y, y1) < eps:
+            return y1
+        y = y1
