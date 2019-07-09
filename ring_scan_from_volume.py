@@ -1,3 +1,9 @@
+""" A class to interpolate a ring scan with given radius and center (BMO points) from a given volume scan
+@author = Martin Tschaikner
+@Date = 07.07.2019
+"""
+
+# import numerical python, statistics and plot packages
 import pandas as pd
 import numpy as np
 from scipy.interpolate import UnivariateSpline
@@ -38,6 +44,13 @@ class RingScanFromVolume:
 
     def circle_points_coordinates(self):
 
+        """
+        method to compute circle points for ring scan interpolation, center of circle defined as geometric mean
+        of BMO points
+        :return: circle points for interpolation
+        :rtype: 2d float array (2 x number of circle points)
+        """
+
         # import bmo points, scaling, computing of bmo center as mean of all points and projection on x,y plane
         bmo_data = pd.read_csv(self.file_name_bmo, sep=",", header=None)
         bmo_points = np.zeros([bmo_data.shape[1], bmo_data.shape[0]], dtype=float)
@@ -55,23 +68,27 @@ class RingScanFromVolume:
         scan_pos = str(self.file_header['ScanPosition'])
         scan_pos_input = scan_pos[2:4]
 
-        # OD clock wise, OS ccw ring scan interpolation
+        # OD clock wise, OS ccw ring scan interpolation for correct orientation
         if scan_pos_input == 'OS':
             phi = np.linspace(0, - 2 * np.pi, num=noe, endpoint=False)
         else:
             phi = np.linspace(0, 2 * np.pi, num=noe, endpoint=False) - np.pi
 
+        # create center from geometric median as vector for broadcasting
         center = np.linspace(bmo_center_geom_mean_2d, bmo_center_geom_mean_2d, num=noe).T
+
+        # compute circle points with given center and radius
         circle_points_coordinates = center + self.radius * np.array((np.cos(phi), np.sin(phi)))
 
+        # plot to visualize differences between center of mass vs. geom median
         plot = True
         if plot:
-            radius = np.mean(np.sqrt((bmo_points[:, 0] - bmo_center_2d[0])**2 +
-                                     (bmo_points[:, 1] - bmo_center_2d[1])**2))
-            shift = np.sqrt((bmo_center_2d[0] - bmo_center_geom_mean_2d[0])**2 +
-                            (bmo_center_2d[1] - bmo_center_geom_mean_2d[1])**2)
-            print('Difference between center of mass and geometric median of BMO points:', shift)
-            bmo_circle_points = center + radius * np.array((np.cos(phi), np.sin(phi)))
+            radius_bmo = np.mean(np.sqrt((bmo_points[:, 0] - bmo_center_geom_mean_2d[0])**2 +
+                                         (bmo_points[:, 1] - bmo_center_geom_mean_2d[1])**2))
+            bmo_circle_points = center + radius_bmo * np.array((np.cos(phi), np.sin(phi)))
+            shift_centers = np.sqrt((bmo_center_2d[0] - bmo_center_geom_mean_2d[0])**2 +
+                                    (bmo_center_2d[1] - bmo_center_geom_mean_2d[1])**2)
+            print('Difference between center of mass and geometric median of BMO points:', shift_centers)
             fig, ax = plt.subplots(ncols=1)
             ax.plot(bmo_points[:, 0], bmo_points[:, 1], color='black', marker='o', linestyle='None')
             ax.plot(bmo_center_3d[0], bmo_center_3d[1], color='red', marker='o')
@@ -85,6 +102,16 @@ class RingScanFromVolume:
         return circle_points_coordinates
 
     def ring_scan_interpolation(self, circle_points_coordinates):
+
+        """
+        This method computes the interpolation. Therefor gaussian weights for those A scans within a filter mask
+        surrounding a given circle point are computed and a new interpolated value is created with those weights.
+
+        :param circle_points_coordinates: circle points for interpolation
+        :return: interpolated grey value image, smoothed ilm & rpe segmentation from Heyex and boolean
+                 if segmentation was successful
+        :rtype: 2d float array, 2x 1d float array boolean
+        """
 
         noe = self.number_circle_points
 
@@ -130,7 +157,7 @@ class RingScanFromVolume:
             # defines sigma as 1/3 of smaller distance
             sigma2 = np.square(1 / 3 * min(self.file_header['Distance'], self.file_header['ScaleX']))
 
-        # loop over all circle points
+        # loop over all circle points to gain interpolated value
         for i in range(noe):
             # reshape and calculating indices of nearest data grid point to ith circle point
             loc_var = np.reshape(circle_points_coordinates[:, i], [2, 1])
@@ -154,23 +181,31 @@ class RingScanFromVolume:
             # compute weights and interpolated grey values
             w = np.exp(-(np.square(diff_x * self.file_header['Distance']) +
                          np.square(diff_y * self.file_header['ScaleX'])) / (2 * sigma2))
+
+            # get gray values within filter mask from volume data
             gv = self.b_scan_stack[:, index_y_min:index_y_max + 1, index_x_min:index_x_max + 1]
+
+            # apply weights at grey values and compute interpolated value
             gv_w = np.sum(np.sum(w * gv, axis=1), axis=1) / np.sum(w)
+
+            # set grey values greater 260 to 0
             gv_w[gv_w >= 0.260e3] = 0
 
             # fill ring scan data array
             ring_scan_data[:, i] = gv_w
 
-            # repeat for ilm data array -- SegLayers # 0
+            # repeat interplation for ilm data array -- SegLayers # 0
             z_ilm = self.seg_data_full['SegLayers'][index_y_min:index_y_max + 1, 0, index_x_min:index_x_max + 1]
 
             # handle nan in ilm data with nan sum
             check = np.isnan(z_ilm).astype('int')
             if np.sum(check) != 0:
-                # print("nan in ILM data for circle point #", i, "@ index center", index_x_0, index_y_0)
+                # search for indices with nan entries and set corresponding weights to 0
                 ind = np.where(check == int(1))
                 w[ind] = 0
+                # print("nan in ILM data for circle point #", i, "@ index center", index_x_0, index_y_0)
 
+            # interpolate data
             ilm_ring_scan[i] = np.nansum(w * z_ilm) / np.sum(w)
 
             # repeat for rpe data array -- SegLayers # 1
@@ -180,16 +215,22 @@ class RingScanFromVolume:
             check = np.isnan(z_rpe).astype('int')
             if np.sum(check) != 0:
                 if np.sum(check) != int(f_x * f_y):
-                    # print("nan in RPE data for circle point #", i, "@ index center", index_x_0, index_y_0)
+                    # search for indices with nan entries and set corresponding weights to 0
                     ind = np.where(check == int(1))
                     w[ind] = 0
+
+                    # interpolate data
                     rpe_ring_scan[i] = np.nansum(w * z_rpe) / np.sum(w)
+                    # print("nan in RPE data for circle point #", i, "@ index center", index_x_0, index_y_0)
+
+                # if all entries are nan, linear interpolate from nearest neighbor points
                 else:
-                    # linear extrapolation from nearest neighbor points if all matrix elements are nan
                     rpe_ring_scan[i] = 2 * rpe_ring_scan[i - 1] - rpe_ring_scan[i - 2]
             else:
+                # interpolate data
                 rpe_ring_scan[i] = np.sum(w * z_rpe) / np.sum(w)
 
+        # smooth interpolated rpe and ilm segmentation
         rpe_ring_scan, remove_boolean_rpe = smooth_segmentation(rpe_ring_scan, 300)
         if remove_boolean_rpe is True:
             print('\x1b[0;30;41m', 'Smoothing failed (probably poor rpe segmentation of volume scan) : data '
@@ -350,7 +391,7 @@ def segmentation_critical_split(segmentation_data, critical_indices, critical_le
         length_pass = np.argwhere(group_len > critical_length)
 
         # compute indices for non critical point groups smaller than the critical length
-        start_ind_close = (np.delete(start_ind, length_pass))
+        start_ind_close = np.delete(start_ind, length_pass)
         end_ind_close = np.delete(end_ind, length_pass)
 
         # flags points within those groups as critical points
@@ -372,15 +413,18 @@ def geometric_median(bmo_points, eps=1e-5):
     Rutgers University, New Brunswick, NJ 08854Communicated by Lawrence A. Shepp, Rutgers,
     The State University of New Jersey, Piscataway, NJ, November 17, 1999 (received for reviewOctober 15, 1999)
 
-    :param bmo_points:
-    :param eps:
+    :param bmo_points: BMO points coordinates
+    :type bmo_points: 2d float array
+    :param eps: parameter for accuracy of computation of geometric median
+    :type eps: float
     :return: geometric median of input points
+    :rtype: coordinates of geometric median
     """
 
     y = np.mean(bmo_points, 0)
 
     while True:
-        d = cdist(bmo_points, [y])
+        d = cdist(bmo_points, y.reshape(1, 2))
         non_zeros = (d != 0)[:, 0]
         d_inv = 1 / d[non_zeros]
         d_inv_sum = np.sum(d_inv)
