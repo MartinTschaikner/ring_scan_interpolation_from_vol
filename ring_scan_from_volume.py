@@ -81,7 +81,7 @@ class RingScanFromVolume:
         circle_points_coordinates = center + self.radius * np.array((np.cos(phi), np.sin(phi)))
 
         # plot to visualize differences between center of mass vs. geom median
-        plot = True
+        plot = False
         if plot:
             radius_bmo = np.mean(np.sqrt((bmo_points[:, 0] - bmo_center_geom_mean_2d[0])**2 +
                                          (bmo_points[:, 1] - bmo_center_geom_mean_2d[1])**2))
@@ -91,9 +91,9 @@ class RingScanFromVolume:
             print('Difference between center of mass and geometric median of BMO points:', shift_centers)
             fig, ax = plt.subplots(ncols=1)
             ax.plot(bmo_points[:, 0], bmo_points[:, 1], color='black', marker='o', linestyle='None')
-            ax.plot(bmo_center_3d[0], bmo_center_3d[1], color='red', marker='o')
+            ax.plot(bmo_center_3d[0], bmo_center_3d[1], color='red', marker='o', linestyle='None')
             ax.plot(bmo_center_geom_mean_2d[0], bmo_center_geom_mean_2d[1], color='orange', marker='+')
-            ax.plot(bmo_circle_points[0], bmo_circle_points[1], ':', linewidth=1, color='black')
+            ax.plot(bmo_circle_points[0], bmo_circle_points[1], color='black', linestyle='None')
             ax.plot(circle_points_coordinates[0], circle_points_coordinates[1], ':', linewidth=3, color='green')
             ax.set_aspect('equal', 'box')
             ax.axis('off')
@@ -157,7 +157,7 @@ class RingScanFromVolume:
             # defines sigma as 1/3 of smaller distance
             sigma2 = np.square(1 / 3 * min(self.file_header['Distance'], self.file_header['ScaleX']))
 
-        # loop over all circle points to gain interpolated value
+        # loop over all circle points to gain interpolated values
         for i in range(noe):
             # reshape and calculating indices of nearest data grid point to ith circle point
             loc_var = np.reshape(circle_points_coordinates[:, i], [2, 1])
@@ -194,7 +194,7 @@ class RingScanFromVolume:
             # fill ring scan data array
             ring_scan_data[:, i] = gv_w
 
-            # repeat interplation for ilm data array -- SegLayers # 0
+            # repeat interpolation for ilm data array -- SegLayers # 0
             z_ilm = self.seg_data_full['SegLayers'][index_y_min:index_y_max + 1, 0, index_x_min:index_x_max + 1]
 
             # handle nan in ilm data with nan sum
@@ -230,7 +230,7 @@ class RingScanFromVolume:
                 # interpolate data
                 rpe_ring_scan[i] = np.sum(w * z_rpe) / np.sum(w)
 
-        # smooth interpolated rpe and ilm segmentation
+        # smooth interpolated rpe and ilm segmentation and decide if data is used or not
         rpe_ring_scan, remove_boolean_rpe = smooth_segmentation(rpe_ring_scan, 300)
         if remove_boolean_rpe is True:
             print('\x1b[0;30;41m', 'Smoothing failed (probably poor rpe segmentation of volume scan) : data '
@@ -248,14 +248,14 @@ class RingScanFromVolume:
 
 def smooth_segmentation(segmentation_data, smoothing_factor):
     """
-    This method checks the interpolated segmentation for critical points (gradient) and if there are any
+    This static method checks the interpolated segmentation for critical points (gradient) and if there are any
     deletes them and fits a 3 deg order spline through the remaining segmentation points. The smoothed segmentation
     is then checked once more and if there still exist critical points, the segmentation smoothing has failed and
     the data will not be compared to an actual ring scan
 
     :param segmentation_data: interpolated ring scan segmentation data (ilm or rpe)
     :type segmentation_data: 1-dim float array
-    :param smoothing_factor: smoothing factor of spline fitting
+    :param smoothing_factor: smoothing factor of spline fitting (around 100 to 300)
     :type: 1-dim float array
     :return: smoothed segmentation spline, boolean for smoothing ok/failed
     :rtype: 1-dim float array, boolean
@@ -277,7 +277,7 @@ def smooth_segmentation(segmentation_data, smoothing_factor):
 
     # splits up the connected non critical parts of the segmentation and adds a part to critical if it´s length is
     # smaller than the critical length
-    final_indices = segmentation_critical_split(segmentation_data, critical_indices, critical_length)
+    final_indices = segmentation_critical_split(segmentation_data, critical_indices, critical_length).astype('int')
 
     # resulting line space for spline fit
     x_fit = np.delete(x_spline, final_indices).astype('int')
@@ -388,7 +388,7 @@ def segmentation_critical_split(segmentation_data, critical_indices, critical_le
         group_len = (end_ind - start_ind).flatten()
 
         # compute indices for which group lengths are bigger than critical length
-        length_pass = np.argwhere(group_len > critical_length)
+        length_pass = np.argwhere(group_len >= critical_length)
 
         # compute indices for non critical point groups smaller than the critical length
         start_ind_close = np.delete(start_ind, length_pass)
@@ -400,6 +400,7 @@ def segmentation_critical_split(segmentation_data, critical_indices, critical_le
                 new_critical = np.arange(start_ind_close[i], end_ind_close[i] + 1).reshape(1, -1)
                 final_indices = np.concatenate((final_indices.reshape(1, -1), new_critical), axis=1)
             final_indices = np.unique(final_indices, axis=0).astype('int')
+            final_indices = np.sort(final_indices)
     else:
         final_indices = critical_indices
 

@@ -113,15 +113,15 @@ if compute:
             circle_points = ring_scan_interpolated.circle_points_coordinates()
 
             step_res = min(header_vol['Distance'], header_vol['ScaleX'])
-            m = 9
-            n = 1
+            m = 12
+            n = 0.5
             step_space = np.arange(-n*m, n*m + 1) / n * step_res
             x, y = np.meshgrid(step_space, step_space)
 
             center_shift = np.array([x.flatten(), y.flatten()]).T
 
             # best shift found so far:
-            center_shift = np.array([[-6.5 * step_res, 11.66 * step_res], [0, 0]])
+            # center_shift = np.array([[-6.5 * step_res, 11.66 * step_res], [0, 0]])
 
             epsilon_min = 1
             true_center_shift = np.array([[0], [0]])
