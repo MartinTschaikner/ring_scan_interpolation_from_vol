@@ -1,5 +1,8 @@
-""" A class to interpolate a ring scan with given radius and center (BMO points) from a given volume scan
+"""
+A class to interpolate a ring scan with given radius and center (BMO points) from a given volume scan.
+
 @author = Martin Tschaikner
+
 @Date = 07.07.2019
 """
 
@@ -20,18 +23,23 @@ class RingScanFromVolume:
                  filter_parameter):
 
         """
-        declare the class variables
+        Declaration of the class variables.
 
         :param file_header: header of vol file
+        :type file_header: dictionary
         :param b_scan_stack: b scan data of vol file
+        :type b_scan_stack: dictionary
         :param seg_data_full: segmentation data of vol file
+        :type seg_data_full: dictionary
         :param file_name_bmo: text file of bmo points of corresponding vol file
+        :type file_name_bmo: csv text file
         :param radius: radius of ring scan
-        :type radius: float (default: 1.75 mm)
+        :type radius: float - default: 1.75 mm
         :param number_circle_points: number of equidistant circle points on ring scan
         :type number_circle_points: integer
         :param filter_parameter: weighting parameter for ring scan interpolation
         :type filter_parameter: integer
+
         """
 
         self.file_header = file_header
@@ -45,10 +53,11 @@ class RingScanFromVolume:
     def circle_points_coordinates(self):
 
         """
-        method to compute circle points for ring scan interpolation, center of circle defined as geometric mean
+        Method to compute circle points for ring scan interpolation, center of circle defined as geometric mean
         of BMO points
+
         :return: circle points for interpolation
-        :rtype: 2d float array (2 x number of circle points)
+        :rtype: 2d float array - 2 x number of circle points
         """
 
         # import bmo points, scaling, computing of bmo center as mean of all points and projection on x,y plane
@@ -108,6 +117,7 @@ class RingScanFromVolume:
         surrounding a given circle point are computed and a new interpolated value is created with those weights.
 
         :param circle_points_coordinates: circle points for interpolation
+        :type circle_points_coordinates: 2d float array - 2 x number of circle points
         :return: interpolated grey value image, smoothed ilm & rpe segmentation from Heyex and boolean
                  if segmentation was successful
         :rtype: 2d float array, 2x 1d float array boolean
@@ -249,14 +259,14 @@ class RingScanFromVolume:
 def smooth_segmentation(segmentation_data, smoothing_factor):
     """
     This static method checks the interpolated segmentation for critical points (gradient) and if there are any
-    deletes them and fits a 3 deg order spline through the remaining segmentation points. The smoothed segmentation
+    deletes them and fits a 3rd degree order spline through the remaining segmentation points. The smoothed segmentation
     is then checked once more and if there still exist critical points, the segmentation smoothing has failed and
     the data will not be compared to an actual ring scan
 
     :param segmentation_data: interpolated ring scan segmentation data (ilm or rpe)
     :type segmentation_data: 1-dim float array
     :param smoothing_factor: smoothing factor of spline fitting (around 100 to 300)
-    :type: 1-dim float array
+    :type: float
     :return: smoothed segmentation spline, boolean for smoothing ok/failed
     :rtype: 1-dim float array, boolean
     """

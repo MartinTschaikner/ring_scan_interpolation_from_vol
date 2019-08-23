@@ -32,7 +32,7 @@ def thickness_ilm_rpe_layer(header, ilm_data, rpe_data):
 vol_filename = askopenfilename()
 file_id = vol_filename.split('/')[-1].split('.')[0]
 
-# parameters for ring scan interpolation & plotting_boolean
+# parameters for ring scan interpolation, save and plotting boolean
 radius = 1.75
 filter_parameter = int(1)
 plotting_boolean = False
